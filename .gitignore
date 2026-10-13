@@ -1,0 +1,11 @@
+node_modules
+dist
+.output
+.vercel
+.tanstack
+release
+desktop/build
+screenshots
+.grok
+*.log
+.DS_Store
