@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=DAWN
+Exec=DAWN
+Icon=dawn
+Categories=AudioVideo;Audio;
+Comment=DRM-free DAW
+Terminal=false

@@ -1,0 +1,90 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  release:
+    types: [published]
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Linux audio and GUI libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libasound2-dev libjack-jackd2-dev \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev \
+            libxinerama-dev libxi-dev libfreetype6-dev \
+            libglu1-mesa-dev libgtk-3-dev pkg-config \
+            curl ca-certificates
+
+      - name: Windows packaging tools
+        if: runner.os == 'Windows'
+        run: choco install nsis wixtoolset -y
+
+      - name: Configure
+        run: cmake -S DAWN -B build -DDAWN_WITH_JUCE=ON -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Core tests
+        shell: bash
+        run: |
+          cmake --build build --config Release --target dawn_tests
+          if [ -x build/dawn_tests ]; then ./build/dawn_tests
+          elif [ -x build/Release/dawn_tests ]; then ./build/Release/dawn_tests
+          elif [ -f build/Release/dawn_tests.exe ]; then ./build/Release/dawn_tests.exe
+          else echo "dawn_tests was not produced" && exit 1
+          fi
+
+      - name: Ad-hoc sign the macOS app
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          APP="$(find build -type d -name 'DAWN.app' | head -n 1)"
+          codesign --force --deep --sign - "$APP"
+          codesign --verify --verbose=2 "$APP"
+
+      - name: Installer packages
+        shell: bash
+        run: |
+          cmake --build build --config Release --target package
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            curl -fsSL -o /tmp/appimagetool "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+            chmod +x /tmp/appimagetool
+            sudo mv /tmp/appimagetool /usr/local/bin/appimagetool
+            cmake --build build --target dawn_appimage
+          fi
+
+      - name: Collect artifacts
+        shell: bash
+        run: |
+          mkdir -p dist
+          find build -path '*DAWN_artefacts*' \( -type f -name 'DAWN.exe' -o -type f -name 'DAWN' -o -type d -name 'DAWN.app' \) -print
+          find build -maxdepth 2 \( -name '*.dmg' -o -name '*.msi' -o -name '*.exe' -o -name '*.tar.gz' -o -name '*.AppImage' \) -exec cp -v {} dist/ \;
+          APP="$(find build -type d -name 'DAWN.app' | head -n 1 || true)"
+          if [ -n "$APP" ]; then cp -R "$APP" dist/; fi
+          EXE="$(find build -path '*DAWN_artefacts*' -type f -name 'DAWN.exe' | head -n 1 || true)"
+          if [ -n "$EXE" ]; then cp "$EXE" dist/; fi
+          BIN="$(find build -path '*DAWN_artefacts*' -type f -name 'DAWN' | head -n 1 || true)"
+          if [ -n "$BIN" ]; then cp "$BIN" dist/DAWN; fi
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: dawn-${{ matrix.os }}
+          path: dist/
+          if-no-files-found: error

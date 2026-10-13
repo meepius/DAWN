@@ -1,0 +1,3 @@
+Place this file next to DAWN (or next to DAWN.app) to keep preferences,
+input mappings, and plugin-hub downloads in ./DAWN_DATA instead of the
+host computer.
