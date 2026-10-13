@@ -21,7 +21,7 @@ DAWN was built to bypass the gatekeepers.
 - **No installers required.** Unzip it. Run it. You are done. Packages exist if you want them. Nothing in the program requires one.
 - **No telemetry.** Web wrappers, usage reporting, and network tracking are compiled out. DAWN goes online only if you ask the built-in plugin hub to download an open-source instrument.
 - **Open standards.** DAWN exports and imports the open [`.dawproject`](https://github.com/bitwig/dawproject) format natively. Your music belongs to you, not to us.
-- **The stick is the studio.** A `DAWN_PORTABLE.txt` flag beside the executable keeps every preference, mapping, download, and project inside `DAWN_DATA/`. Unplug it. The host computer has nothing new to remember.
+- **The folder is the studio.** Unzip DAWN onto a USB drive. A `DAWN_PORTABLE.txt` flag beside the executable keeps every preference, mapping, download, and project inside `DAWN_DATA/`. Eject the drive and the host computer has nothing new to remember.
 
 If a tool cannot survive without calling home, it was never a tool. It was a lease.
 
@@ -36,11 +36,13 @@ If a tool cannot survive without calling home, it was never a tool. It was a lea
 
 ## Portable mode
 
+Unzip, then you are done. There is no installer and no extra hardware.
+
 1. Download the latest `.zip` for your OS from the Releases tab.
-2. Unzip it anywhere. Desktop, thumb drive, external SSD.
+2. Unzip that folder onto a USB drive, an external SSD, or the desktop.
 3. Run `DAWN.exe`, `DAWN.app`, or the Linux binary.
 
-The folder already contains `DAWN_PORTABLE.txt`, so DAWN writes device setup, input maps, hub downloads, and projects into `DAWN_DATA/` next to the executable. Move the folder to another machine and the studio comes with it.
+The folder already contains `DAWN_PORTABLE.txt`, so DAWN writes device setup, input maps, hub downloads, and projects into `DAWN_DATA/` next to the executable. Eject the drive, plug it into another machine, and the studio is the same folder.
 
 `DAWN_DATA/demo.dawn` is the first-run session: **PUBLIC ENEMY, PRIVATE NETWORK**, 142 BPM, F minor. RIOT is already launched. IDLE and OVERLOAD are sitting on the same tracks, not launched. The chop clip is comped. The note on that clip says to use the rushed word.
 
@@ -51,7 +53,8 @@ Leave the flag out and DAWN falls back to `%APPDATA%\DAWN`, `~/Library/Applicati
 JUCE 8 and CMake 3.22 or newer. The first configure fetches JUCE.
 
 ```bash
-git clone https://github.com/yourusername/dawn.git
+git clone https://github.com/meepius/DAWN.git
+cd DAWN
 cmake -S DAWN -B build -DDAWN_WITH_JUCE=ON -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release --parallel
 ```
