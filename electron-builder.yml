@@ -1,0 +1,40 @@
+appId: studio.lattice.daw
+productName: LATTICE
+copyright: Copyright © 2026 LATTICE contributors
+directories:
+  output: release
+  buildResources: desktop/build
+files:
+  - package.json
+  - desktop/main.cjs
+  - dist/client/**/*
+asar: true
+extraMetadata:
+  main: desktop/main.cjs
+  name: lattice
+  version: 1.0.0
+  description: Portable desktop build of LATTICE, a session and arrangement DAW.
+  private: false
+win:
+  target:
+    - target: portable
+      arch:
+        - x64
+  artifactName: LATTICE-${version}-windows-portable.${ext}
+  signAndEditExecutable: false
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  category: AudioVideo
+  artifactName: LATTICE-${version}-linux.${ext}
+  synopsis: Session and arrangement DAW
+mac:
+  target:
+    - target: zip
+      arch:
+        - arm64
+  category: public.app-category.music
+  artifactName: LATTICE-${version}-mac-${arch}.${ext}
+  identity: null
