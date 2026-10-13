@@ -2,6 +2,8 @@
 
 #include "juce/ProjectState.h"
 
+#include <juce_gui_basics/juce_gui_basics.h>
+
 namespace dawn {
 
 // Drag across a lane to keep that take. The snapshot only receives the comp.
