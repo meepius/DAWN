@@ -46,6 +46,7 @@ private:
     juce::MidiBuffer midi_;
 };
 
+DawnApplication::DawnApplication() = default;
 DawnApplication::~DawnApplication() = default;
 
 const juce::String DawnApplication::getApplicationName() { return "DAWN"; }
