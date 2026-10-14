@@ -1,22 +1,300 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>DAWN</title>
-  <style>
-    body {
-      background: #1a1a1a;
-      color: #00ff00;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-      font-family: "Segoe UI", sans-serif;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DAWN Web UI</title>
+    <style>
+        :root {
+            --bg-main: #121212;
+            --bg-panel: #1e1e1e;
+            --bg-track: #252525;
+            --bg-clip: #333333;
+            --accent-green: #ccff00;
+            --accent-red: #ff3366;
+            --text-main: #e0e0e0;
+            --text-muted: #888888;
+            --border-color: #2a2a2a;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            user-select: none;
+        }
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .transport-bar {
+            height: 60px;
+            background-color: var(--bg-panel);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 15px;
+        }
+        .btn {
+            background-color: var(--bg-clip);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.1s;
+        }
+        .btn:hover { background-color: #444; }
+        .btn:active { transform: translateY(2px); }
+        .btn.play.on, .btn.play:active { background-color: var(--accent-green); color: black; }
+        .btn.record:active { background-color: var(--accent-red); color: white; }
+        .bpm-readout {
+            font-family: monospace;
+            font-size: 1.2rem;
+            background: #111;
+            padding: 6px 12px;
+            border-radius: 4px;
+            color: var(--accent-green);
+            border: 1px inset #222;
+        }
+        .session-view {
+            flex: 1;
+            display: flex;
+            padding: 10px;
+            gap: 10px;
+            overflow-x: auto;
+            background-color: var(--bg-main);
+        }
+        .track {
+            width: 140px;
+            background-color: var(--bg-track);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+        }
+        .track-header {
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        .track-controls {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            padding: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .tgl-btn {
+            width: 28px;
+            height: 28px;
+            background: var(--bg-clip);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .tgl-btn:hover { background: #444; }
+        .tgl-btn.on { color: #121212; background: var(--accent-green); }
+        .clip-grid {
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
+            overflow-y: auto;
+        }
+        .clip-slot {
+            height: 40px;
+            background-color: var(--bg-clip);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            font-size: 0.8rem;
+            transition: background-color 0.1s;
+        }
+        .clip-slot:hover { background-color: #4a4a4a; }
+        .clip-slot.active {
+            background-color: var(--accent-green);
+            color: black;
+            font-weight: bold;
+        }
+        .device-panel {
+            height: 220px;
+            background-color: var(--bg-panel);
+            border-top: 1px solid var(--border-color);
+            padding: 15px;
+            display: flex;
+            gap: 20px;
+        }
+        .device {
+            background-color: #1a1a1a;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 15px;
+            min-width: 250px;
+        }
+        .device-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 15px;
+        }
+        .macro-row { display: flex; gap: 15px; }
+        .knob-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.7rem;
+        }
+        .knob {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: conic-gradient(var(--accent-green) 0% 60%, #333 60% 100%);
+            border: 2px solid #111;
+            position: relative;
+        }
+        .knob::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px; height: 30px;
+            background: #222;
+            border-radius: 50%;
+        }
+    </style>
 </head>
 <body>
-  <h1>DAWN WEB UI CONNECTED</h1>
+    <div class="app-container">
+        <div class="transport-bar">
+            <button class="btn play" onclick="handlePlay()">▶ PLAY</button>
+            <button class="btn" onclick="handleStop()">■ STOP</button>
+            <button class="btn record">● REC</button>
+            <div class="bpm-readout" id="position">1.1.1</div>
+            <div class="bpm-readout" id="bpm">156.00</div>
+        </div>
+        <div class="session-view">
+            <div class="track">
+                <div class="track-header">Drums</div>
+                <div class="track-controls">
+                    <button class="tgl-btn" onclick="toggleFlag(this, 0, 'mute')">M</button>
+                    <button class="tgl-btn" onclick="toggleFlag(this, 0, 'solo')">S</button>
+                </div>
+                <div class="clip-grid">
+                    <div class="clip-slot active" data-track="0" data-scene="0" onclick="launchClip(this, 'Drums Break 1')">▶ Break 1</div>
+                    <div class="clip-slot" data-track="0" data-scene="1" onclick="launchClip(this, 'Drums Fill')">▶ Fill</div>
+                    <div class="clip-slot" data-track="0" data-scene="2" onclick="launchClip(this, 'Drums Build')">▶ Build</div>
+                    <div class="clip-slot" data-track="0" data-scene="3"></div>
+                </div>
+            </div>
+            <div class="track">
+                <div class="track-header">Bass</div>
+                <div class="track-controls">
+                    <button class="tgl-btn" onclick="toggleFlag(this, 1, 'mute')">M</button>
+                    <button class="tgl-btn" onclick="toggleFlag(this, 1, 'solo')">S</button>
+                </div>
+                <div class="clip-grid">
+                    <div class="clip-slot" data-track="1" data-scene="0" onclick="launchClip(this, 'Bass Sub')">▶ Sub Drop</div>
+                    <div class="clip-slot active" data-track="1" data-scene="1" onclick="launchClip(this, 'Bass Acid')">▶ Acid Line</div>
+                    <div class="clip-slot" data-track="1" data-scene="2"></div>
+                    <div class="clip-slot" data-track="1" data-scene="3"></div>
+                </div>
+            </div>
+            <div class="track" style="border-color: #8a2be2;">
+                <div class="track-header" style="color: #c98cff;">Synth</div>
+                <div class="track-controls">
+                    <button class="tgl-btn" onclick="toggleFlag(this, 2, 'mute')">M</button>
+                    <button class="tgl-btn" onclick="toggleFlag(this, 2, 'solo')">S</button>
+                </div>
+                <div class="clip-grid">
+                    <div class="clip-slot" data-track="2" data-scene="0"></div>
+                    <div class="clip-slot" data-track="2" data-scene="1" onclick="launchClip(this, 'Synth Chords')">▶ Chords</div>
+                    <div class="clip-slot" data-track="2" data-scene="2" onclick="launchClip(this, 'Synth Arp')">▶ Arp</div>
+                    <div class="clip-slot" data-track="2" data-scene="3"></div>
+                </div>
+            </div>
+        </div>
+        <div class="device-panel">
+            <div class="device">
+                <div class="device-title">Analog Synth</div>
+                <div class="macro-row">
+                    <div class="knob-container">
+                        <div class="knob" style="background: conic-gradient(var(--accent-green) 0% 30%, #333 30% 100%);"></div>
+                        <span>Cutoff</span>
+                    </div>
+                    <div class="knob-container">
+                        <div class="knob" style="background: conic-gradient(var(--accent-green) 0% 80%, #333 80% 100%);"></div>
+                        <span>Res</span>
+                    </div>
+                    <div class="knob-container">
+                        <div class="knob" style="background: conic-gradient(var(--accent-green) 0% 50%, #333 50% 100%);"></div>
+                        <span>Decay</span>
+                    </div>
+                </div>
+            </div>
+            <div class="device">
+                <div class="device-title">Reverb</div>
+                <div class="macro-row">
+                    <div class="knob-container">
+                        <div class="knob" style="background: conic-gradient(#00d2ff 0% 45%, #333 45% 100%);"></div>
+                        <span>Size</span>
+                    </div>
+                    <div class="knob-container">
+                        <div class="knob" style="background: conic-gradient(#00d2ff 0% 20%, #333 20% 100%);"></div>
+                        <span>Dry/Wet</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        function emit(name, payload) {
+            const bridge = window.__JUCE__ && window.__JUCE__.backend;
+            if (bridge && typeof bridge.emitEvent === "function") bridge.emitEvent(name, payload || {});
+            console.log(name, payload || "");
+        }
+        function bars(beats) {
+            if (!(beats > 0)) beats = 0;
+            const bar = Math.floor(beats / 4) + 1;
+            const inside = beats % 4;
+            return bar + "." + (Math.floor(inside) + 1) + "." + (Math.floor((inside % 1) * 4) + 1);
+        }
+        window.dawn = {
+            setTransport(playing, playhead) {
+                document.querySelector(".btn.play").classList.toggle("on", !!playing);
+                const position = document.getElementById("position");
+                if (position) position.textContent = bars(Number(playhead) || 0);
+            }
+        };
+        function handlePlay() { emit("play"); }
+        function handleStop() {
+            emit("stop");
+            document.querySelectorAll(".clip-slot").forEach((clip) => clip.classList.remove("active"));
+        }
+        function launchClip(element, clipName) {
+            emit("launchClip", { track: Number(element.dataset.track), scene: Number(element.dataset.scene), name: clipName });
+            for (const sibling of element.parentElement.children) sibling.classList.remove("active");
+            element.classList.add("active");
+        }
+        function toggleFlag(button, track, flag) {
+            button.classList.toggle("on");
+            emit("trackFlag", { track, flag, value: button.classList.contains("on") });
+        }
+    </script>
 </body>
 </html>
