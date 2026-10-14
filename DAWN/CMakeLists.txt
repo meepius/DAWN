@@ -90,10 +90,12 @@ if(DAWN_WITH_JUCE)
         juce::juce_audio_devices
         juce::juce_audio_processors
         juce::juce_dsp
+        juce::juce_gui_extra
         juce::juce_gui_basics
     )
+    file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/packaging/DAWN_DATA/web" DAWN_WEB_ROOT)
     target_compile_definitions(DAWN PRIVATE
-        JUCE_WEB_BROWSER=0
+        JUCE_WEB_BROWSER=1
         JUCE_USE_CURL=0
         JUCE_DISPLAY_SPLASH_SCREEN=0
         JUCE_REPORT_APP_USAGE=0
@@ -102,6 +104,7 @@ if(DAWN_WITH_JUCE)
         JUCE_PLUGINHOST_VST3=1
         JUCE_PLUGINHOST_AU=$<BOOL:${APPLE}>
         $<$<BOOL:${DAWN_ASIO_SDK}>:JUCE_ASIO=1>
+        "DAWN_WEB_ROOT=\"${DAWN_WEB_ROOT}\""
     )
 
     install(TARGETS DAWN
@@ -110,6 +113,7 @@ if(DAWN_WITH_JUCE)
     )
     install(FILES packaging/DAWN_PORTABLE.txt DESTINATION .)
     install(FILES packaging/DAWN_DATA/demo.dawn DESTINATION DAWN_DATA)
+    install(DIRECTORY packaging/DAWN_DATA/web DESTINATION DAWN_DATA)
 
     set(CPACK_PACKAGE_NAME "DAWN")
     set(CPACK_PACKAGE_VENDOR "DAWN")

@@ -1,56 +1,54 @@
 #pragma once
 
 #include "juce/LiveMidiInjector.h"
-#include "juce/MasterVisualizers.h"
 #include "juce/ProjectState.h"
+#include "juce/VisualizerDataQueue.h"
 
+#include <juce_gui_extra/juce_gui_extra.h>
 #include <memory>
+#include <optional>
 
 namespace dawn {
 
-// Session view. Layout is Grid and FlexBox. Transport, clip launches, levels,
-// and pads all write the project tree or a lock-free engine field. The audio
-// callback only reads the published snapshot and those atomics.
-class DawnMainComponent : public juce::Component, private juce::Timer {
+// The native widget grid is gone. This window is one JUCE 8 web view.
+// HTML sends events and slider relays. Those callbacks write ProjectState or
+// the lock-free live MIDI injector. The audio thread never sees the browser.
+class DawnMainComponent : public juce::Component,
+                          private juce::Timer,
+                          private juce::WebSliderRelay::Listener {
 public:
     DawnMainComponent(ProjectState& state, AudioEngine& engine, VisualizerDataQueue& visuals, LiveMidiInjector& live);
     ~DawnMainComponent() override;
 
-    void paint(juce::Graphics& graphics) override;
     void resized() override;
 
 private:
     static constexpr int kColumns = 6;
     static constexpr int kScenes = 4;
 
-    class TransportBar;
-    class SessionView;
-    class DevicePanel;
-
     void timerCallback() override;
-    void launchClip(juce::ValueTree clip);
-    void selectTrack(int index);
-    double quantizeBeats() const;
+    void sliderValueChanged(juce::WebSliderRelay* relay) override;
+    void initialUpdateRequested(juce::WebSliderRelay* relay) override;
+
+    juce::WebBrowserComponent::Options browserOptions();
+    std::optional<juce::WebBrowserComponent::Resource> resourceFor(const juce::String& path) const;
+    juce::File webRoot() const;
+    juce::String sessionJson() const;
+    void launchClip(int track, int scene);
+    void setTrackFlag(int track, const juce::String& flag, bool value);
     double quantized(double beat) const;
-    void setSend(juce::ValueTree track, juce::ValueTree destination, float level);
-    juce::ValueTree trackNamed(const juce::String& fragment) const;
 
     ProjectState& state_;
     AudioEngine& engine_;
     LiveMidiInjector& live_;
     juce::ValueTree project_;
-    int selected_ = 0;
     int trackCount_ = 0;
     juce::ValueTree tracks_[kColumns];
     juce::ValueTree clips_[kColumns][kScenes];
 
-    TransportBar* transport_ = nullptr;
-    SessionView* session_ = nullptr;
-    DevicePanel* devices_ = nullptr;
-
-    std::unique_ptr<TransportBar> transportHolder_;
-    std::unique_ptr<SessionView> sessionHolder_;
-    std::unique_ptr<DevicePanel> deviceHolder_;
+    juce::WebSliderRelay masterRelay_{"master"};
+    juce::WebSliderRelay bpmRelay_{"bpm"};
+    std::unique_ptr<juce::WebBrowserComponent> browser_;
 };
 
 } // namespace dawn
