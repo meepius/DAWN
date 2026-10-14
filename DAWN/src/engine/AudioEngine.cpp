@@ -1,6 +1,7 @@
 #include "engine/AudioEngine.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace dawn {
 
@@ -29,6 +30,18 @@ void AudioEngine::setAudioRunning(bool running) noexcept {
 void AudioEngine::setLiveMidi(void* user, void (*pop)(void*, MidiBlock&) noexcept) noexcept {
     liveUser_.store(user, std::memory_order_relaxed);
     livePop_.store(pop, std::memory_order_release);
+}
+
+void AudioEngine::setMasterGain(float gain) noexcept {
+    masterGain_.store(std::clamp(gain, 0.0f, 1.0f), std::memory_order_relaxed);
+}
+
+void AudioEngine::setMetronome(bool enabled) noexcept {
+    metronome_.store(enabled, std::memory_order_relaxed);
+}
+
+void AudioEngine::setRecording(bool recording) noexcept {
+    recording_.store(recording, std::memory_order_release);
 }
 
 bool AudioEngine::adoptTail(void* user, void (*render)(void*, float* const*, int, int, float) noexcept, int fadeSamples) noexcept {
@@ -123,6 +136,33 @@ void AudioEngine::process(float* const* master,
             slot.render(slot.user, master, channels, samples, gain);
             slot.samplesLeft -= samples;
             if (slot.samplesLeft <= 0) slot.state.store(2, std::memory_order_release);
+        }
+    }
+
+    if (master != nullptr && metronome_.load(std::memory_order_relaxed) && clock_.playing) {
+        const double beat = clock_.beat;
+        if (beat > metronomeBeat_ && std::floor(beat) != std::floor(metronomeBeat_)) {
+            const bool downbeat = std::fmod(std::floor(beat), 4.0) < 0.5;
+            clickLevel_ = downbeat ? 0.32f : 0.14f;
+        }
+        metronomeBeat_ = beat;
+    }
+    if (master != nullptr && clickLevel_ > 0.0008f) {
+        for (int i = 0; i < samples; ++i) {
+            const float tick = clickLevel_;
+            clickLevel_ *= 0.94f;
+            for (int ch = 0; ch < channels; ++ch) {
+                if (master[ch] != nullptr) master[ch][i] += tick;
+            }
+        }
+    }
+    if (master != nullptr) {
+        const float gain = masterGain_.load(std::memory_order_relaxed);
+        if (gain != 1.0f) {
+            for (int ch = 0; ch < channels; ++ch) {
+                if (master[ch] == nullptr) continue;
+                for (int i = 0; i < samples; ++i) master[ch][i] *= gain;
+            }
         }
     }
 

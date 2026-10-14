@@ -9,6 +9,16 @@
 
 namespace dawn {
 
+struct DawnWindow : juce::DocumentWindow {
+    DawnWindow() : juce::DocumentWindow("DAWN", juce::Colour(0xff1a1a1a), juce::DocumentWindow::allButtons) {
+        setUsingNativeTitleBar(true);
+    }
+
+    void closeButtonPressed() override {
+        if (auto* app = juce::JUCEApplication::getInstance()) app->systemRequestedQuit();
+    }
+};
+
 class DawnApplication::Callback : public juce::AudioIODeviceCallback {
 public:
     Callback(AudioEngine& engine, VisualizerDataQueue& visuals) : engine_(engine), visuals_(visuals) {}
@@ -87,12 +97,8 @@ void DawnApplication::initialise(const juce::String&) {
     juce::ignoreUnused(audioError);
     devices_.addAudioCallback(callback_.get());
 
-    window_ = std::make_unique<juce::DocumentWindow>(
-        "DAWN",
-        juce::Colour(0xff101114),
-        juce::DocumentWindow::allButtons);
-    window_->setUsingNativeTitleBar(true);
-    auto* shell = new DawnMainComponent(visuals_, state_->state());
+    window_ = std::make_unique<DawnWindow>();
+    auto* shell = new DawnMainComponent(*state_, engine_, visuals_, injector_);
     if (mapper_ != nullptr) shell->addKeyListener(mapper_.get());
     window_->setContentOwned(shell, true);
     window_->centreWithSize(1280, 800);

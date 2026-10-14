@@ -1,39 +1,56 @@
 #pragma once
 
-#include "juce/CompingComponent.h"
-#include "juce/DawnAboutPanel.h"
-#include "juce/InspectorPanel.h"
+#include "juce/LiveMidiInjector.h"
 #include "juce/MasterVisualizers.h"
+#include "juce/ProjectState.h"
+
+#include <memory>
 
 namespace dawn {
 
-// One component for phone and desktop. Touch and mouse both arrive as mouse events.
-class DawnMainComponent : public juce::Component {
+// Session view. Layout is Grid and FlexBox. Transport, clip launches, levels,
+// and pads all write the project tree or a lock-free engine field. The audio
+// callback only reads the published snapshot and those atomics.
+class DawnMainComponent : public juce::Component, private juce::Timer {
 public:
-    DawnMainComponent(VisualizerDataQueue& visuals, juce::ValueTree project);
+    DawnMainComponent(ProjectState& state, AudioEngine& engine, VisualizerDataQueue& visuals, LiveMidiInjector& live);
+    ~DawnMainComponent() override;
 
     void paint(juce::Graphics& graphics) override;
     void resized() override;
-    void mouseDown(const juce::MouseEvent& event) override;
 
 private:
-    void showPage(int page);
-    bool phone() const noexcept { return getWidth() < 720; }
+    static constexpr int kColumns = 6;
+    static constexpr int kScenes = 4;
 
-    VisualizerDataQueue& queue_;
+    class TransportBar;
+    class SessionView;
+    class DevicePanel;
+
+    void timerCallback() override;
+    void launchClip(juce::ValueTree clip);
+    void selectTrack(int index);
+    double quantizeBeats() const;
+    double quantized(double beat) const;
+    void setSend(juce::ValueTree track, juce::ValueTree destination, float level);
+    juce::ValueTree trackNamed(const juce::String& fragment) const;
+
+    ProjectState& state_;
+    AudioEngine& engine_;
+    LiveMidiInjector& live_;
     juce::ValueTree project_;
-    juce::TextButton nav_[5];
-    juce::TextButton pads_[8];
-    juce::TextButton keys_[8];
-    juce::TextButton manifesto_{"MANIFESTO"};
-    juce::Slider volume_;
-    MasterVisualizers visuals_;
-    InspectorPanel inspector_;
-    CompingComponent comping_;
-    DawnAboutPanel about_;
-    int page_ = 0;
-    int litPad_ = -1;
-    int litKey_ = -1;
+    int selected_ = 0;
+    int trackCount_ = 0;
+    juce::ValueTree tracks_[kColumns];
+    juce::ValueTree clips_[kColumns][kScenes];
+
+    TransportBar* transport_ = nullptr;
+    SessionView* session_ = nullptr;
+    DevicePanel* devices_ = nullptr;
+
+    std::unique_ptr<TransportBar> transportHolder_;
+    std::unique_ptr<SessionView> sessionHolder_;
+    std::unique_ptr<DevicePanel> deviceHolder_;
 };
 
 } // namespace dawn

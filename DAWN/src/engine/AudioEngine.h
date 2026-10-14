@@ -26,6 +26,10 @@ public:
     void publishPlayback(const PlaybackSnapshot& playback);
     void setAudioRunning(bool running) noexcept;
     void setLiveMidi(void* user, void (*pop)(void*, MidiBlock&) noexcept) noexcept;
+    void setMasterGain(float gain) noexcept;
+    void setMetronome(bool enabled) noexcept;
+    void setRecording(bool recording) noexcept;
+    bool recording() const noexcept { return recording_.load(std::memory_order_acquire); }
     bool adoptTail(void* user, void (*render)(void*, float* const*, int, int, float) noexcept, int fadeSamples) noexcept;
     void* reclaimTail() noexcept;
     void reclaim();
@@ -60,6 +64,11 @@ private:
     std::atomic<double> playhead_{0.0};
     std::atomic<void*> liveUser_{nullptr};
     std::atomic<void (*)(void*, MidiBlock&) noexcept> livePop_{nullptr};
+    std::atomic<float> masterGain_{1.0f};
+    std::atomic<bool> metronome_{false};
+    std::atomic<bool> recording_{false};
+    float clickLevel_ = 0.0f;
+    double metronomeBeat_ = 0.0;
     std::vector<Retired> retired_;
     int channels_ = 2;
     double sampleRate_ = 48000.0;
