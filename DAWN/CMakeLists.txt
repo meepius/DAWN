@@ -44,12 +44,34 @@ if(DAWN_WITH_JUCE)
     )
     FetchContent_MakeAvailable(JUCE)
 
+    if(WIN32)
+        set(DAWN_WEBVIEW2_VERSION "1.0.1901.177")
+        set(DAWN_WEBVIEW2_PARENT "${CMAKE_BINARY_DIR}/webview2-nuget")
+        set(DAWN_WEBVIEW2_ROOT "${DAWN_WEBVIEW2_PARENT}/Microsoft.Web.WebView2")
+        if(NOT EXISTS "${DAWN_WEBVIEW2_ROOT}/build/native/include/WebView2.h")
+            set(DAWN_WEBVIEW2_ZIP "${CMAKE_BINARY_DIR}/Microsoft.Web.WebView2.zip")
+            file(DOWNLOAD
+                "https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/${DAWN_WEBVIEW2_VERSION}"
+                "${DAWN_WEBVIEW2_ZIP}"
+                TLS_VERIFY ON
+                STATUS DAWN_WEBVIEW2_STATUS)
+            list(GET DAWN_WEBVIEW2_STATUS 0 DAWN_WEBVIEW2_CODE)
+            if(NOT DAWN_WEBVIEW2_CODE EQUAL 0)
+                message(FATAL_ERROR "Could not download the WebView2 SDK: ${DAWN_WEBVIEW2_STATUS}")
+            endif()
+            file(ARCHIVE_EXTRACT INPUT "${DAWN_WEBVIEW2_ZIP}" DESTINATION "${DAWN_WEBVIEW2_ROOT}")
+        endif()
+        set(JUCE_WEBVIEW2_PACKAGE_LOCATION "${DAWN_WEBVIEW2_PARENT}" CACHE PATH "Parent of the Microsoft.Web.WebView2 package" FORCE)
+    endif()
+
     juce_add_gui_app(DAWN
         PRODUCT_NAME "DAWN"
         COMPANY_NAME "DAWN"
         BUNDLE_ID app.dawn.audio
         NEEDS_MIDI_INPUT TRUE
         NEEDS_MIDI_OUTPUT FALSE
+        NEEDS_WEB_BROWSER TRUE
+        NEEDS_WEBVIEW2 TRUE
     )
     target_sources(DAWN PRIVATE
         src/app/Main.cpp
@@ -96,6 +118,7 @@ if(DAWN_WITH_JUCE)
     file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/packaging/DAWN_DATA/web" DAWN_WEB_ROOT)
     target_compile_definitions(DAWN PRIVATE
         JUCE_WEB_BROWSER=1
+        JUCE_USE_WIN_WEBVIEW2=1
         JUCE_USE_CURL=0
         JUCE_DISPLAY_SPLASH_SCREEN=0
         JUCE_REPORT_APP_USAGE=0

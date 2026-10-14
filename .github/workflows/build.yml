@@ -27,8 +27,11 @@ jobs:
             libasound2-dev libjack-jackd2-dev \
             libx11-dev libxext-dev libxrandr-dev libxcursor-dev \
             libxinerama-dev libxi-dev libfreetype6-dev \
-            libglu1-mesa-dev libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config \
+            libglu1-mesa-dev libgtk-3-dev pkg-config \
             curl ca-certificates
+          sudo apt-get install -y libwebkit2gtk-4.1-dev || true
+          sudo apt-get install -y libwebkit2gtk-4.0-dev || true
+          pkg-config --exists webkit2gtk-4.1 || pkg-config --exists webkit2gtk-4.0
 
       - name: Windows packaging tools
         if: runner.os == 'Windows'
