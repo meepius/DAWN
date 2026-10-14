@@ -2,6 +2,7 @@
 
 #include "juce/VisualizerDataQueue.h"
 
+#include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_dsp/juce_dsp.h>
 
 namespace dawn {

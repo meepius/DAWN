@@ -58,10 +58,10 @@ public:
     juce::UndoManager& undo() noexcept { return undo_; }
 
     juce::ValueTree addTrack(TrackKind kind, const juce::String& name);
-    void setVolume(const juce::ValueTree& track, float volume);
-    juce::ValueTree addClip(const juce::ValueTree& track, double loopBeats);
-    void addNote(const juce::ValueTree& clip, int pitch, double start, double length, int velocity);
-    void setLaunched(const juce::ValueTree& clip, bool launched, double launchBeat);
+    void setVolume(juce::ValueTree track, float volume);
+    juce::ValueTree addClip(juce::ValueTree track, double loopBeats);
+    void addNote(juce::ValueTree clip, int pitch, double start, double length, int velocity);
+    void setLaunched(juce::ValueTree clip, bool launched, double launchBeat);
     void play(double fromBeat);
     void stop();
     void replace(juce::ValueTree next);

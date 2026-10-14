@@ -2,6 +2,8 @@
 
 #include "juce/AppPaths.h"
 
+#include <juce_events/juce_events.h>
+
 // User-started plugin install only. DAWN does not open a connection for anything else.
 
 namespace dawn {

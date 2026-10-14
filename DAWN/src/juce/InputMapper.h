@@ -24,7 +24,7 @@ public:
     void pollGamepad(const GamepadFrame& frame);
 
     bool keyPressed(const juce::KeyPress& key, juce::Component* origin) override;
-    bool keyStateChanged(bool isKeyDown) override;
+    bool keyStateChanged(bool isKeyDown, juce::Component* originatingComponent) override;
 
 private:
     int noteFor(const juce::KeyPress& key) const;

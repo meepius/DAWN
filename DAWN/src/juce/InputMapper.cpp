@@ -39,7 +39,8 @@ bool InputMapper::keyPressed(const juce::KeyPress& key, juce::Component*) {
     return true;
 }
 
-bool InputMapper::keyStateChanged(bool) {
+bool InputMapper::keyStateChanged(bool isKeyDown, juce::Component* originatingComponent) {
+    juce::ignoreUnused(isKeyDown, originatingComponent);
     for (int slot = 0; slot < 128; ++slot) {
         if (!keyDown_[slot]) continue;
         if (juce::KeyPress::isKeyCurrentlyDown(slot)) continue;

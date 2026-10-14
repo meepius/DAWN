@@ -204,9 +204,10 @@ bool ProjectSerializer::exportDawproject(const ProjectState& state, PluginRack& 
         track->setAttribute("comment", trackTree[Id::userNotes].toString());
         const auto kind = static_cast<TrackKind>(static_cast<int>(trackTree[Id::kind]));
         track->setAttribute("contentType", kind == TrackKind::Audio ? "audio" : "notes");
-        auto* devices = track->createNewChildElement("Channel")->createNewChildElement("Devices");
-        devices->getParentElement()->setAttribute("audioChannels", 2);
-        devices->getParentElement()->setAttribute("role", "regular");
+        auto* channel = track->createNewChildElement("Channel");
+        channel->setAttribute("audioChannels", 2);
+        channel->setAttribute("role", "regular");
+        auto* devices = channel->createNewChildElement("Devices");
         for (const auto& deviceTree : trackTree) {
             if (!deviceTree.hasType(Id::device)) continue;
             const auto format = deviceTree[Id::formatName].toString();

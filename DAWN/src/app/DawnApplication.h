@@ -22,6 +22,7 @@ public:
     const juce::String getApplicationName() override;
     const juce::String getApplicationVersion() override;
     bool moreThanOneInstanceAllowed() override;
+    ~DawnApplication() override;
     void initialise(const juce::String& commandLine) override;
     void shutdown() override;
     void systemRequestedQuit() override;

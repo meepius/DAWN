@@ -2,6 +2,8 @@
 
 #include "juce/ProjectState.h"
 
+#include <juce_gui_basics/juce_gui_basics.h>
+
 namespace dawn {
 
 class InspectorPanel : public juce::Component {

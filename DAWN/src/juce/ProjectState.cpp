@@ -32,11 +32,11 @@ juce::ValueTree ProjectState::addTrack(TrackKind kind, const juce::String& name)
     return track;
 }
 
-void ProjectState::setVolume(const juce::ValueTree& track, float volume) {
+void ProjectState::setVolume(juce::ValueTree track, float volume) {
     track.setProperty(Id::volume, volume, &undo_);
 }
 
-juce::ValueTree ProjectState::addClip(const juce::ValueTree& track, double loopBeats) {
+juce::ValueTree ProjectState::addClip(juce::ValueTree track, double loopBeats) {
     juce::ValueTree clip{Id::clip};
     clip.setProperty(Id::loopBeats, loopBeats, nullptr);
     clip.setProperty(Id::launchBeat, 0.0, nullptr);
@@ -45,7 +45,7 @@ juce::ValueTree ProjectState::addClip(const juce::ValueTree& track, double loopB
     return clip;
 }
 
-void ProjectState::addNote(const juce::ValueTree& clip, int pitch, double start, double length, int velocity) {
+void ProjectState::addNote(juce::ValueTree clip, int pitch, double start, double length, int velocity) {
     juce::ValueTree note{Id::note};
     note.setProperty(Id::pitch, pitch, nullptr);
     note.setProperty(Id::start, start, nullptr);
@@ -54,7 +54,7 @@ void ProjectState::addNote(const juce::ValueTree& clip, int pitch, double start,
     clip.appendChild(note, &undo_);
 }
 
-void ProjectState::setLaunched(const juce::ValueTree& clip, bool launched, double launchBeat) {
+void ProjectState::setLaunched(juce::ValueTree clip, bool launched, double launchBeat) {
     clip.setProperty(Id::launchBeat, launchBeat, nullptr);
     clip.setProperty(Id::launched, launched, nullptr);
 }

@@ -1,5 +1,7 @@
 #include "juce/CatalogManager.h"
 
+#include <juce_events/juce_events.h>
+
 // The catalog request is the only manifest download in DAWN.
 // It runs when the user asks the plugin hub to refresh. There is no telemetry.
 
