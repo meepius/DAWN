@@ -12,6 +12,9 @@ rm -rf "$APPDIR"
 mkdir -p "$APPDIR/usr/bin"
 cp "$BIN" "$APPDIR/usr/bin/DAWN"
 chmod +x "$APPDIR/usr/bin/DAWN"
+mkdir -p "$APPDIR/usr/bin/DAWN_DATA"
+cp -R "$(dirname "$0")/DAWN_DATA/." "$APPDIR/usr/bin/DAWN_DATA/"
+cp "$(dirname "$0")/DAWN_PORTABLE.txt" "$APPDIR/usr/bin/DAWN_PORTABLE.txt"
 cp "$(dirname "$0")/dawn.desktop" "$APPDIR/DAWN.desktop"
 # 1x1 png so appimagetool has an icon.
 printf '%s' 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==' | base64 -d > "$APPDIR/dawn.png" 2>/dev/null || \

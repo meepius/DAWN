@@ -141,9 +141,20 @@ if(DAWN_WITH_JUCE)
     )
 
     add_custom_command(TARGET DAWN POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:DAWN>/DAWN_DATA"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/DAWN_DATA"
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${CMAKE_CURRENT_SOURCE_DIR}/packaging/DAWN_DATA/web"
             "$<TARGET_FILE_DIR:DAWN>/DAWN_DATA/web"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/packaging/DAWN_DATA/web"
+            "${CMAKE_BINARY_DIR}/DAWN_DATA/web"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/packaging/DAWN_DATA/demo.dawn"
+            "$<TARGET_FILE_DIR:DAWN>/DAWN_DATA/demo.dawn"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/packaging/DAWN_PORTABLE.txt"
+            "$<TARGET_FILE_DIR:DAWN>/DAWN_PORTABLE.txt"
         VERBATIM)
 
     install(TARGETS DAWN
@@ -151,8 +162,13 @@ if(DAWN_WITH_JUCE)
         RUNTIME DESTINATION .
     )
     install(FILES packaging/DAWN_PORTABLE.txt DESTINATION .)
-    install(FILES packaging/DAWN_DATA/demo.dawn DESTINATION DAWN_DATA)
-    install(DIRECTORY packaging/DAWN_DATA/web DESTINATION DAWN_DATA)
+    if(APPLE)
+        set(DAWN_DATA_DEST "DAWN.app/Contents/MacOS/DAWN_DATA")
+    else()
+        set(DAWN_DATA_DEST "DAWN_DATA")
+    endif()
+    install(FILES packaging/DAWN_DATA/demo.dawn DESTINATION ${DAWN_DATA_DEST})
+    install(DIRECTORY packaging/DAWN_DATA/web DESTINATION ${DAWN_DATA_DEST})
 
     set(CPACK_PACKAGE_NAME "DAWN")
     set(CPACK_PACKAGE_VENDOR "DAWN")
@@ -168,9 +184,9 @@ if(DAWN_WITH_JUCE)
     set(CPACK_DMG_VOLUME_NAME "DAWN")
     set(CPACK_DMG_SLA_USE_RESOURCE_FILE_LICENSE OFF)
     if(WIN32)
-        set(CPACK_GENERATOR "NSIS;WIX")
+        set(CPACK_GENERATOR "NSIS;WIX;ZIP")
     elseif(APPLE)
-        set(CPACK_GENERATOR "DragNDrop")
+        set(CPACK_GENERATOR "DragNDrop;ZIP")
     else()
         set(CPACK_GENERATOR "TGZ")
     endif()

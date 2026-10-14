@@ -75,19 +75,37 @@ jobs:
       - name: Collect artifacts
         shell: bash
         run: |
-          mkdir -p dist
-          find build -path '*DAWN_artefacts*' \( -type f -name 'DAWN.exe' -o -type f -name 'DAWN' -o -type d -name 'DAWN.app' \) -print
-          find build -maxdepth 2 \( -name '*.dmg' -o -name '*.msi' -o -name '*.exe' -o -name '*.tar.gz' -o -name '*.AppImage' \) -exec cp -v {} dist/ \;
-          APP="$(find build -type d -name 'DAWN.app' | head -n 1 || true)"
-          if [ -n "$APP" ]; then cp -R "$APP" dist/; fi
+          set -euo pipefail
+          mkdir -p dist/DAWN/DAWN_DATA
+          cp DAWN/packaging/DAWN_PORTABLE.txt dist/DAWN/
+          cp -R DAWN/packaging/DAWN_DATA/. dist/DAWN/DAWN_DATA/
           EXE="$(find build -path '*DAWN_artefacts*' -type f -name 'DAWN.exe' | head -n 1 || true)"
-          if [ -n "$EXE" ]; then cp "$EXE" dist/; fi
-          BIN="$(find build -path '*DAWN_artefacts*' -type f -name 'DAWN' | head -n 1 || true)"
-          if [ -n "$BIN" ]; then cp "$BIN" dist/DAWN; fi
+          BIN="$(find build -path '*DAWN_artefacts*' -type f -name 'DAWN' ! -path '*.app/*' | head -n 1 || true)"
+          APP="$(find build -type d -name 'DAWN.app' | head -n 1 || true)"
+          if [ -n "$EXE" ]; then
+            cp "$EXE" dist/DAWN/DAWN.exe
+            if [ -d "$(dirname "$EXE")/DAWN_DATA/web" ]; then
+              cp -R "$(dirname "$EXE")/DAWN_DATA/web" dist/DAWN/DAWN_DATA/
+            fi
+          fi
+          if [ -n "$BIN" ]; then
+            cp "$BIN" dist/DAWN/DAWN
+            chmod +x dist/DAWN/DAWN
+          fi
+          if [ -n "$APP" ]; then cp -R "$APP" dist/DAWN/; fi
+          find build -maxdepth 2 \( -name '*.dmg' -o -name '*.msi' -o -name '*.tar.gz' -o -name '*.AppImage' -o -name '*.zip' \) -exec cp -v {} dist/ \;
+          tar -a -cf "dist/DAWN-portable-${{ runner.os }}.zip" -C dist DAWN
 
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: dawn-${{ matrix.os }}
-          path: dist/
+          path: |
+            dist/DAWN/**
+            dist/DAWN-portable-${{ matrix.os }}.zip
+            dist/*.dmg
+            dist/*.msi
+            dist/*.zip
+            dist/*.AppImage
+            dist/*.tar.gz
           if-no-files-found: error
