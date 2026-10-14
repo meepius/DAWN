@@ -119,6 +119,7 @@ if(DAWN_WITH_JUCE)
     target_compile_definitions(DAWN PRIVATE
         JUCE_WEB_BROWSER=1
         JUCE_USE_WIN_WEBVIEW2=1
+        JUCE_USE_WIN_WEBVIEW2_WITH_STATIC_LINKING=1
         JUCE_USE_CURL=0
         JUCE_DISPLAY_SPLASH_SCREEN=0
         JUCE_REPORT_APP_USAGE=0
@@ -129,6 +130,12 @@ if(DAWN_WITH_JUCE)
         $<$<BOOL:${DAWN_ASIO_SDK}>:JUCE_ASIO=1>
         "DAWN_WEB_ROOT=\"${DAWN_WEB_ROOT}\""
     )
+
+    add_custom_command(TARGET DAWN POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/packaging/DAWN_DATA/web"
+            "$<TARGET_FILE_DIR:DAWN>/DAWN_DATA/web"
+        VERBATIM)
 
     install(TARGETS DAWN
         BUNDLE DESTINATION .
