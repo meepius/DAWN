@@ -123,6 +123,121 @@ private:
     juce::ComboBox quantize_;
 };
 
+class DawnMainComponent::DevicePanel : public juce::Component {
+public:
+    explicit DevicePanel(VisualizerDataQueue& queue) : visuals_(queue) {
+        addAndMakeVisible(sendHost_);
+        addAndMakeVisible(macroHost_);
+        addAndMakeVisible(visuals_);
+        addAndMakeVisible(padHost_);
+        for (auto* slider : {&reverb_, &delay_, &pan_}) {
+            sendHost_.addAndMakeVisible(*slider);
+            slider->setSliderStyle(juce::Slider::LinearHorizontal);
+            slider->setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+        }
+        reverb_.setRange(0.0, 1.0, 0.001);
+        delay_.setRange(0.0, 1.0, 0.001);
+        pan_.setRange(-1.0, 1.0, 0.001);
+        for (int i = 0; i < 6; ++i) {
+            macroHost_.addAndMakeVisible(macroName_[i]);
+            macroHost_.addAndMakeVisible(macro_[i]);
+            macroName_[i].setText(kMacroNames[i], juce::dontSendNotification);
+            macroName_[i].setFont(juce::FontOptions(12.0f));
+            macro_[i].setSliderStyle(juce::Slider::LinearHorizontal);
+            macro_[i].setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+            macro_[i].setRange(i == 5 ? 0.0 : 0.0, 1.0, 0.001);
+        }
+        for (int i = 0; i < 8; ++i) {
+            padHost_.addAndMakeVisible(pads_[i]);
+            pads_[i].setButtonText(kPadNames[i]);
+        }
+    }
+
+    void bind(DawnMainComponent& owner);
+
+    void pullTrack(int) {
+        if (owner_ == nullptr) return;
+        auto track = current();
+        if (!track.isValid()) return;
+        pan_.setValue(static_cast<double>(track[Id::pan]), juce::dontSendNotification);
+        macro_[5].setValue(static_cast<double>(track[Id::volume]), juce::dontSendNotification);
+        auto readSend = [&](juce::ValueTree destination, juce::Slider& slider) {
+            if (!destination.isValid()) return;
+            const auto id = destination[Id::trackId];
+            for (int i = 0; i < track.getNumChildren(); ++i) {
+                auto child = track.getChild(i);
+                if (child.hasType(Id::send) && child[Id::destination] == id) {
+                    slider.setValue(static_cast<double>(child[Id::level]), juce::dontSendNotification);
+                    return;
+                }
+            }
+        };
+        readSend(owner_->trackNamed("reverb").isValid() ? owner_->trackNamed("reverb") : owner_->trackNamed("air"), reverb_);
+        readSend(owner_->trackNamed("delay"), delay_);
+    }
+
+    void paint(juce::Graphics& graphics) override {
+        graphics.fillAll(juce::Colour(0xff14161c));
+        graphics.setColour(juce::Colour(0xff2c3038));
+        graphics.fillRect(0, 0, getWidth(), 1);
+        graphics.setColour(kLime.withAlpha(0.8f));
+        graphics.setFont(juce::FontOptions(12.0f));
+        graphics.drawText("SENDS", 12, 6, 80, 16, juce::Justification::centredLeft);
+        graphics.drawText("DRUM RACK", sendsArea_.getRight() + 12, 6, 120, 16, juce::Justification::centredLeft);
+    }
+
+    void resized() override {
+        juce::Grid grid;
+        grid.templateColumns = {juce::Grid::TrackInfo(juce::Grid::Px(240)), juce::Grid::TrackInfo(juce::Grid::Fr(1)),
+                                juce::Grid::TrackInfo(juce::Grid::Px(280))};
+        grid.templateRows = {juce::Grid::TrackInfo(juce::Grid::Fr(1)), juce::Grid::TrackInfo(juce::Grid::Px(72))};
+        grid.columnGap = juce::Grid::Px(8);
+        grid.rowGap = juce::Grid::Px(6);
+        grid.items = {juce::GridItem(sendHost_), juce::GridItem(macroHost_), juce::GridItem(visuals_), juce::GridItem(padHost_).withArea(2, 1, 3, 4)};
+        grid.performLayout(getLocalBounds().reduced(8, 24));
+        sendsArea_ = sendHost_.getBounds();
+
+        juce::FlexBox sendBox;
+        sendBox.flexDirection = juce::FlexBox::Direction::column;
+        sendBox.items.add(juce::FlexItem(reverb_).withFlex(1.0f).withMargin(2.0f));
+        sendBox.items.add(juce::FlexItem(delay_).withFlex(1.0f).withMargin(2.0f));
+        sendBox.items.add(juce::FlexItem(pan_).withFlex(1.0f).withMargin(2.0f));
+        sendBox.performLayout(sendHost_.getLocalBounds().toFloat());
+
+        auto macroArea = macroHost_.getLocalBounds();
+        const int rowH = juce::jmax(1, macroArea.getHeight() / 6);
+        for (int i = 0; i < 6; ++i) {
+            auto row = macroArea.removeFromTop(rowH);
+            macroName_[i].setBounds(row.removeFromLeft(58));
+            macro_[i].setBounds(row);
+        }
+        juce::FlexBox pads;
+        pads.flexDirection = juce::FlexBox::Direction::row;
+        for (auto& pad : pads_) pads.items.add(juce::FlexItem(pad).withFlex(1.0f).withMargin(3.0f));
+        pads.performLayout(padHost_.getLocalBounds().toFloat());
+    }
+
+private:
+    juce::ValueTree current() const {
+        if (owner_ == nullptr || owner_->selected_ < 0 || owner_->selected_ >= owner_->trackCount_) return {};
+        return owner_->tracks_[owner_->selected_];
+    }
+
+    void pushSend(juce::ValueTree destination, float level) {
+        if (owner_ == nullptr || !destination.isValid()) return;
+        owner_->setSend(current(), destination, level);
+    }
+
+    DawnMainComponent* owner_ = nullptr;
+    juce::Component sendHost_, macroHost_, padHost_;
+    juce::Slider reverb_, delay_, pan_;
+    juce::Label macroName_[6];
+    juce::Slider macro_[6];
+    juce::TextButton pads_[8];
+    MasterVisualizers visuals_;
+    juce::Rectangle<int> sendsArea_;
+};
+
 class DawnMainComponent::SessionView : public juce::Component {
 public:
     class Slot : public juce::Button {
@@ -306,47 +421,20 @@ public:
     std::unique_ptr<Column> columns_[DawnMainComponent::kColumns];
 };
 
-class DawnMainComponent::DevicePanel : public juce::Component {
-public:
-    explicit DevicePanel(VisualizerDataQueue& queue) : visuals_(queue) {
-        addAndMakeVisible(sendHost_);
-        addAndMakeVisible(macroHost_);
-        addAndMakeVisible(visuals_);
-        addAndMakeVisible(padHost_);
-        for (auto* slider : {&reverb_, &delay_, &pan_}) {
-            sendHost_.addAndMakeVisible(*slider);
-            slider->setSliderStyle(juce::Slider::LinearHorizontal);
-            slider->setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-        }
-        reverb_.setRange(0.0, 1.0, 0.001);
-        delay_.setRange(0.0, 1.0, 0.001);
-        pan_.setRange(-1.0, 1.0, 0.001);
-        for (int i = 0; i < 6; ++i) {
-            macroHost_.addAndMakeVisible(macroName_[i]);
-            macroHost_.addAndMakeVisible(macro_[i]);
-            macroName_[i].setText(kMacroNames[i], juce::dontSendNotification);
-            macroName_[i].setFont(juce::FontOptions(12.0f));
-            macro_[i].setSliderStyle(juce::Slider::LinearHorizontal);
-            macro_[i].setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-            macro_[i].setRange(i == 5 ? 0.0 : 0.0, 1.0, 0.001);
-        }
-        for (int i = 0; i < 8; ++i) {
-            padHost_.addAndMakeVisible(pads_[i]);
-            pads_[i].setButtonText(kPadNames[i]);
-        }
-    }
 
-    void bind(DawnMainComponent& owner) {
+void DawnMainComponent::DevicePanel::bind(DawnMainComponent& owner) {
         owner_ = &owner;
         reverb_.onValueChange = [this] { pushSend(owner_->trackNamed("reverb").isValid() ? owner_->trackNamed("reverb") : owner_->trackNamed("air"),
                                                    static_cast<float>(reverb_.getValue())); };
         delay_.onValueChange = [this] { pushSend(owner_->trackNamed("delay"), static_cast<float>(delay_.getValue())); };
         pan_.onValueChange = [this] {
-            if (auto track = current()) track.setProperty(Id::pan, static_cast<float>(pan_.getValue()), nullptr);
+            auto track = current();
+            if (track.isValid()) track.setProperty(Id::pan, static_cast<float>(pan_.getValue()), nullptr);
         };
         for (int i = 0; i < 5; ++i) {
             macro_[i].onValueChange = [this, i] {
-                if (auto track = current()) track.setProperty(kMacroNames[i], macro_[i].getValue(), nullptr);
+                auto track = current();
+                if (track.isValid()) track.setProperty(kMacroNames[i], macro_[i].getValue(), nullptr);
             };
         }
         macro_[5].onValueChange = [this] {
@@ -364,88 +452,7 @@ public:
         pullTrack(0);
     }
 
-    void pullTrack(int) {
-        if (owner_ == nullptr) return;
-        auto track = current();
-        if (!track.isValid()) return;
-        pan_.setValue(static_cast<double>(track[Id::pan]), juce::dontSendNotification);
-        macro_[5].setValue(static_cast<double>(track[Id::volume]), juce::dontSendNotification);
-        auto readSend = [&](juce::ValueTree destination, juce::Slider& slider) {
-            if (!destination.isValid()) return;
-            const auto id = destination[Id::trackId];
-            for (int i = 0; i < track.getNumChildren(); ++i) {
-                auto child = track.getChild(i);
-                if (child.hasType(Id::send) && child[Id::destination] == id) {
-                    slider.setValue(static_cast<double>(child[Id::level]), juce::dontSendNotification);
-                    return;
-                }
-            }
-        };
-        readSend(owner_->trackNamed("reverb").isValid() ? owner_->trackNamed("reverb") : owner_->trackNamed("air"), reverb_);
-        readSend(owner_->trackNamed("delay"), delay_);
-    }
 
-    void paint(juce::Graphics& graphics) override {
-        graphics.fillAll(juce::Colour(0xff14161c));
-        graphics.setColour(juce::Colour(0xff2c3038));
-        graphics.fillRect(0, 0, getWidth(), 1);
-        graphics.setColour(kLime.withAlpha(0.8f));
-        graphics.setFont(juce::FontOptions(12.0f));
-        graphics.drawText("SENDS", 12, 6, 80, 16, juce::Justification::centredLeft);
-        graphics.drawText("DRUM RACK", sendsArea_.getRight() + 12, 6, 120, 16, juce::Justification::centredLeft);
-    }
-
-    void resized() override {
-        juce::Grid grid;
-        grid.templateColumns = {juce::Grid::TrackInfo(juce::Grid::Px(240)), juce::Grid::TrackInfo(juce::Grid::Fr(1)),
-                                juce::Grid::TrackInfo(juce::Grid::Px(280))};
-        grid.templateRows = {juce::Grid::TrackInfo(juce::Grid::Fr(1)), juce::Grid::TrackInfo(juce::Grid::Px(72))};
-        grid.columnGap = juce::Grid::Px(8);
-        grid.rowGap = juce::Grid::Px(6);
-        grid.items = {juce::GridItem(sendHost_), juce::GridItem(macroHost_), juce::GridItem(visuals_), juce::GridItem(padHost_).withArea(2, 1, 3, 4)};
-        grid.performLayout(getLocalBounds().reduced(8, 24));
-        sendsArea_ = sendHost_.getBounds();
-
-        juce::FlexBox sendBox;
-        sendBox.flexDirection = juce::FlexBox::Direction::column;
-        sendBox.items.add(juce::FlexItem(reverb_).withFlex(1.0f).withMargin(2.0f));
-        sendBox.items.add(juce::FlexItem(delay_).withFlex(1.0f).withMargin(2.0f));
-        sendBox.items.add(juce::FlexItem(pan_).withFlex(1.0f).withMargin(2.0f));
-        sendBox.performLayout(sendHost_.getLocalBounds().toFloat());
-
-        auto macroArea = macroHost_.getLocalBounds();
-        const int rowH = juce::jmax(1, macroArea.getHeight() / 6);
-        for (int i = 0; i < 6; ++i) {
-            auto row = macroArea.removeFromTop(rowH);
-            macroName_[i].setBounds(row.removeFromLeft(58));
-            macro_[i].setBounds(row);
-        }
-        juce::FlexBox pads;
-        pads.flexDirection = juce::FlexBox::Direction::row;
-        for (auto& pad : pads_) pads.items.add(juce::FlexItem(pad).withFlex(1.0f).withMargin(3.0f));
-        pads.performLayout(padHost_.getLocalBounds().toFloat());
-    }
-
-private:
-    juce::ValueTree current() const {
-        if (owner_ == nullptr || owner_->selected_ < 0 || owner_->selected_ >= owner_->trackCount_) return {};
-        return owner_->tracks_[owner_->selected_];
-    }
-
-    void pushSend(juce::ValueTree destination, float level) {
-        if (owner_ == nullptr || !destination.isValid()) return;
-        owner_->setSend(current(), destination, level);
-    }
-
-    DawnMainComponent* owner_ = nullptr;
-    juce::Component sendHost_, macroHost_, padHost_;
-    juce::Slider reverb_, delay_, pan_;
-    juce::Label macroName_[6];
-    juce::Slider macro_[6];
-    juce::TextButton pads_[8];
-    MasterVisualizers visuals_;
-    juce::Rectangle<int> sendsArea_;
-};
 
 DawnMainComponent::DawnMainComponent(ProjectState& state, AudioEngine& engine, VisualizerDataQueue& visuals, LiveMidiInjector& live)
     : state_(state), engine_(engine), live_(live), project_(state.state()) {
