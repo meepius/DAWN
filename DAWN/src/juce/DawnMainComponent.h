@@ -52,6 +52,7 @@ private:
     juce::WebSliderRelay bpmRelay_{"bpm"};
     std::unique_ptr<juce::WebBrowserComponent> browser_;
     bool opened_ = false;
+    int navAttempts_ = 0;
 };
 
 } // namespace dawn

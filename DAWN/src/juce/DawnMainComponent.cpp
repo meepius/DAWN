@@ -49,8 +49,19 @@ DawnMainComponent::DawnMainComponent(ProjectState& state, AudioEngine& engine, V
 
 void DawnMainComponent::openFrontend() {
     if (browser_ == nullptr || opened_ || !isShowing()) return;
-    opened_ = true;
+    const auto index = webRoot().getChildFile("index.html");
+    if (navAttempts_ == 0) {
+        const auto line = "DAWN frontend " + index.getFullPathName()
+                        + (index.existsAsFile() ? " exists" : " MISSING")
+                        + " url=" + juce::WebBrowserComponent::getResourceProviderRoot();
+        DBG(line);
+        juce::Logger::writeToLog(line);
+        const auto logFile = index.getParentDirectory().getParentDirectory().getChildFile("webview.log");
+        logFile.getParentDirectory().createDirectory();
+        logFile.appendText(line + "\n");
+    }
     browser_->goToURL(juce::WebBrowserComponent::getResourceProviderRoot());
+    opened_ = ++navAttempts_ >= 8;
 }
 
 DawnMainComponent::~DawnMainComponent() {
@@ -69,9 +80,9 @@ void DawnMainComponent::visibilityChanged() { openFrontend(); }
 
 juce::File DawnMainComponent::webRoot() const {
     const auto executable = juce::File::getSpecialLocation(juce::File::currentExecutableFile);
-    const auto beside = juce::File(executable.getParentDirectory().getChildFile("DAWN_DATA/web").getFullPathName());
+    const auto beside = juce::File(executable.getSiblingFile("DAWN_DATA").getChildFile("web").getFullPathName());
     if (beside.getChildFile("index.html").existsAsFile()) return beside;
-    const auto portable = juce::File(AppPaths::current().root().getChildFile("DAWN_DATA/web").getFullPathName());
+    const auto portable = juce::File(AppPaths::current().root().getChildFile("DAWN_DATA").getChildFile("web").getFullPathName());
     if (portable.getChildFile("index.html").existsAsFile()) return portable;
 #if defined(DAWN_WEB_ROOT)
     const auto source = juce::File(juce::File(DAWN_WEB_ROOT).getFullPathName());
@@ -127,7 +138,7 @@ juce::String DawnMainComponent::sessionJson() const {
 }
 
 juce::WebBrowserComponent::Options DawnMainComponent::browserOptions() {
-    auto options = juce::WebBrowserComponent::Options{};
+    auto options = juce::WebBrowserComponent::Options{}.withKeepPageLoadedWhenBrowserIsHidden();
 #if JUCE_WINDOWS
     const auto userData = juce::File::getSpecialLocation(juce::File::currentExecutableFile)
                               .getParentDirectory()
@@ -189,7 +200,8 @@ void DawnMainComponent::initialUpdateRequested(juce::WebSliderRelay* relay) {
 }
 
 void DawnMainComponent::timerCallback() {
-    if (browser_ == nullptr) return;
+    openFrontend();
+    if (browser_ == nullptr || !opened_) return;
     const bool playing = static_cast<int>(project_[Id::command]) == static_cast<int>(TransportCommand::Play);
     juce::String script;
     script << "window.dawn && window.dawn.setTransport(" << (playing ? "true" : "false") << "," << engine_.playhead() << ")";
