@@ -38,6 +38,7 @@ DawnMainComponent::DawnMainComponent(ProjectState& state, AudioEngine& engine, V
         ++count;
     }
     trackCount_ = count;
+    engine_.setMasterGain(0.85f);
 
     masterRelay_.addListener(this);
     bpmRelay_.addListener(this);
@@ -114,14 +115,25 @@ juce::WebBrowserComponent::Options DawnMainComponent::browserOptions() {
                        .withOptionsFrom(bpmRelay_)
                        .withResourceProvider([this](const juce::String& path) { return resourceFor(path); })
                        .withInitialisationData("session", sessionJson())
+                       .withInitialisationData("bpm", project_[Id::bpm])
+                       .withInitialisationData("master", 0.85)
                        .withNativeFunction("togglePlay", [this](const juce::Array<juce::var>&, juce::WebBrowserComponent::NativeFunctionCompletion done) {
                            const bool playing = static_cast<int>(project_[Id::command]) == static_cast<int>(TransportCommand::Play);
                            if (playing) state_.stop();
                            else state_.play(quantized(engine_.playhead()));
                            if (done != nullptr) done(!playing);
                        })
+                       .withEventListener("play", [this](juce::var) { state_.play(quantized(engine_.playhead())); })
+                       .withEventListener("stop", [this](juce::var) { state_.stop(); })
                        .withEventListener("playClicked", [this](juce::var) { state_.play(quantized(engine_.playhead())); })
                        .withEventListener("stopClicked", [this](juce::var) { state_.stop(); })
+                       .withEventListener("slider_moved", [this](juce::var payload) {
+                           const auto id = objectArg(payload, "id").toString();
+                           const auto value = static_cast<double>(objectArg(payload, "value"));
+                           if (id == "master") engine_.setMasterGain(static_cast<float>(value));
+                           else if (id == "bpm") project_.setProperty(Id::bpm, value, nullptr);
+                           else if (id == "level" && trackCount_ > 0) tracks_[0].setProperty(Id::volume, static_cast<float>(value), nullptr);
+                       })
                        .withEventListener("launchClip", [this](juce::var payload) {
                            launchClip(static_cast<int>(objectArg(payload, "track")), static_cast<int>(objectArg(payload, "scene")));
                        })
