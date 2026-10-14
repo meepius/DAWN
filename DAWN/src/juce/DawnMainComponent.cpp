@@ -44,10 +44,13 @@ DawnMainComponent::DawnMainComponent(ProjectState& state, AudioEngine& engine, V
     bpmRelay_.addListener(this);
     browser_ = std::make_unique<juce::WebBrowserComponent>(browserOptions());
     addAndMakeVisible(*browser_);
-    const auto index = webRoot().getChildFile("index.html");
-    if (index.existsAsFile())
-        browser_->goToURL(juce::WebBrowserComponent::getResourceProviderRoot());
     startTimerHz(15);
+}
+
+void DawnMainComponent::openFrontend() {
+    if (browser_ == nullptr || opened_ || !isShowing()) return;
+    opened_ = true;
+    browser_->goToURL(juce::WebBrowserComponent::getResourceProviderRoot());
 }
 
 DawnMainComponent::~DawnMainComponent() {
@@ -59,35 +62,49 @@ DawnMainComponent::~DawnMainComponent() {
 
 void DawnMainComponent::resized() {
     if (browser_ != nullptr) browser_->setBounds(getLocalBounds());
+    openFrontend();
 }
 
+void DawnMainComponent::visibilityChanged() { openFrontend(); }
+
 juce::File DawnMainComponent::webRoot() const {
-    auto absolute = [](juce::File directory) { return juce::File(directory.getFullPathName()); };
-    const auto candidates = {
-        absolute(juce::File::getSpecialLocation(juce::File::currentExecutableFile).getParentDirectory().getChildFile("DAWN_DATA/web")),
-        absolute(AppPaths::current().root().getChildFile("web")),
-        absolute(AppPaths::current().root().getChildFile("DAWN_DATA/web")),
+    const auto executable = juce::File::getSpecialLocation(juce::File::currentExecutableFile);
+    const auto beside = juce::File(executable.getParentDirectory().getChildFile("DAWN_DATA/web").getFullPathName());
+    if (beside.getChildFile("index.html").existsAsFile()) return beside;
+    const auto portable = juce::File(AppPaths::current().root().getChildFile("DAWN_DATA/web").getFullPathName());
+    if (portable.getChildFile("index.html").existsAsFile()) return portable;
 #if defined(DAWN_WEB_ROOT)
-        absolute(juce::File(DAWN_WEB_ROOT)),
+    const auto source = juce::File(juce::File(DAWN_WEB_ROOT).getFullPathName());
+    if (source.getChildFile("index.html").existsAsFile()) return source;
 #endif
-    };
-    for (const auto& directory : candidates)
-        if (directory.getChildFile("index.html").existsAsFile()) return directory;
-    return candidates.begin() != candidates.end() ? *candidates.begin() : juce::File();
+    return beside;
 }
 
 std::optional<juce::WebBrowserComponent::Resource> DawnMainComponent::resourceFor(const juce::String& path) const {
-    if (path.contains("..")) return std::nullopt;
-    auto relative = path == "/" ? juce::String("index.html") : path;
+    auto relative = path;
+    if (relative.containsIgnoreCase("juce.backend"))
+        relative = relative.fromFirstOccurrenceOf("juce.backend", false, false);
+    if (relative.isEmpty() || relative == "/") relative = "index.html";
     if (relative.startsWithChar('/')) relative = relative.substring(1);
+    if (relative.contains("..")) return std::nullopt;
+
     const auto root = webRoot();
     const auto file = juce::File(root.getChildFile(relative).getFullPathName());
-    if (!file.existsAsFile() || !file.isAChildOf(root)) return std::nullopt;
+    const auto rootPrefix = root.getFullPathName() + juce::File::getSeparatorString();
     juce::MemoryBlock block;
-    if (!file.loadFileAsData(block)) return std::nullopt;
-    std::vector<std::byte> bytes(block.getSize());
-    if (!bytes.empty()) std::memcpy(bytes.data(), block.getData(), block.getSize());
-    return juce::WebBrowserComponent::Resource{std::move(bytes), mimeFor(file.getFileName())};
+    if (file.existsAsFile() && file.getFullPathName().startsWithIgnoreCase(rootPrefix) && file.loadFileAsData(block)) {
+        std::vector<std::byte> bytes(block.getSize());
+        if (!bytes.empty()) std::memcpy(bytes.data(), block.getData(), block.getSize());
+        return juce::WebBrowserComponent::Resource{std::move(bytes), mimeFor(file.getFileName())};
+    }
+
+    const auto message = juce::String("<!DOCTYPE html><html><body style=\"background:#1a1a1a;color:#00ff00;font-family:sans-serif\">")
+                       + "<h1>DAWN WEB UI MISSING</h1><p>"
+                       + root.getChildFile("index.html").getFullPathName()
+                       + "</p></body></html>";
+    std::vector<std::byte> bytes(static_cast<std::size_t>(message.getNumBytesAsUTF8()));
+    std::memcpy(bytes.data(), message.toRawUTF8(), bytes.size());
+    return juce::WebBrowserComponent::Resource{std::move(bytes), juce::String("text/html")};
 }
 
 juce::String DawnMainComponent::sessionJson() const {
@@ -112,7 +129,14 @@ juce::String DawnMainComponent::sessionJson() const {
 juce::WebBrowserComponent::Options DawnMainComponent::browserOptions() {
     auto options = juce::WebBrowserComponent::Options{};
 #if JUCE_WINDOWS
-    options = options.withBackend(juce::WebBrowserComponent::Options::Backend::webview2);
+    const auto userData = juce::File::getSpecialLocation(juce::File::currentExecutableFile)
+                              .getParentDirectory()
+                              .getChildFile("DAWN_DATA/webview2");
+    userData.createDirectory();
+    options = options.withBackend(juce::WebBrowserComponent::Options::Backend::webview2)
+                  .withWinWebView2Options(juce::WebBrowserComponent::Options::WinWebView2{}
+                                              .withUserDataFolder(userData)
+                                              .withBackgroundColour(juce::Colour(0xff1a1a1a)));
 #endif
     options = options.withNativeIntegrationEnabled()
                        .withOptionsFrom(masterRelay_)

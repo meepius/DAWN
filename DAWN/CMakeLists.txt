@@ -44,6 +44,15 @@ if(DAWN_WITH_JUCE)
     )
     FetchContent_MakeAvailable(JUCE)
 
+    set(DAWN_WEBVIEW_SOURCE "${juce_SOURCE_DIR}/modules/juce_gui_extra/native/juce_WebBrowserComponent_windows.cpp")
+    if(EXISTS "${DAWN_WEBVIEW_SOURCE}")
+        file(READ "${DAWN_WEBVIEW_SOURCE}" DAWN_WEBVIEW_TEXT)
+        string(REPLACE "settings->put_AreDevToolsEnabled (false);"
+                       "settings->put_AreDevToolsEnabled (true);"
+                       DAWN_WEBVIEW_TEXT "${DAWN_WEBVIEW_TEXT}")
+        file(WRITE "${DAWN_WEBVIEW_SOURCE}" "${DAWN_WEBVIEW_TEXT}")
+    endif()
+
     if(WIN32)
         set(DAWN_WEBVIEW2_VERSION "1.0.1901.177")
         set(DAWN_WEBVIEW2_PARENT "${CMAKE_BINARY_DIR}/webview2-nuget")

@@ -21,6 +21,7 @@ public:
     ~DawnMainComponent() override;
 
     void resized() override;
+    void visibilityChanged() override;
 
 private:
     static constexpr int kColumns = 6;
@@ -33,6 +34,7 @@ private:
     juce::WebBrowserComponent::Options browserOptions();
     std::optional<juce::WebBrowserComponent::Resource> resourceFor(const juce::String& path) const;
     juce::File webRoot() const;
+    void openFrontend();
     juce::String sessionJson() const;
     void launchClip(int track, int scene);
     void setTrackFlag(int track, const juce::String& flag, bool value);
@@ -49,6 +51,7 @@ private:
     juce::WebSliderRelay masterRelay_{"master"};
     juce::WebSliderRelay bpmRelay_{"bpm"};
     std::unique_ptr<juce::WebBrowserComponent> browser_;
+    bool opened_ = false;
 };
 
 } // namespace dawn
