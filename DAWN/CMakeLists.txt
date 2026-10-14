@@ -24,7 +24,11 @@ target_include_directories(dawn_core PUBLIC src)
 
 add_executable(dawn_tests tests/model_test.cpp tests/midi_test.cpp tests/input_test.cpp tests/final_test.cpp tests/workflow_test.cpp tests/portable_test.cpp)
 target_link_libraries(dawn_tests PRIVATE dawn_core)
-target_compile_options(dawn_tests PRIVATE -Wall -Wextra -Werror)
+if(MSVC)
+    target_compile_options(dawn_tests PRIVATE /W4)
+else()
+    target_compile_options(dawn_tests PRIVATE -Wall -Wextra -Werror)
+endif()
 
 # DAWN is GPLv3. These flags turn off the JUCE splash and any usage reporting.
 # juce::URL is compiled in, but the only callers are the user-started plugin hub.
@@ -74,6 +78,11 @@ if(DAWN_WITH_JUCE)
         src/juce/CompingComponent.cpp
     )
     target_include_directories(DAWN PRIVATE src)
+    if(MSVC)
+        target_compile_options(DAWN PRIVATE /W4)
+    else()
+        target_compile_options(DAWN PRIVATE -Wall -Wextra)
+    endif()
     target_link_libraries(DAWN PRIVATE
         dawn_core
         juce::juce_audio_utils
