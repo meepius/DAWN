@@ -101,7 +101,7 @@ public:
         row.flexDirection = juce::FlexBox::Direction::row;
         row.alignItems = juce::FlexBox::AlignItems::center;
         auto item = [](juce::Component& component, float width) {
-            return juce::FlexItem(component).withWidth(width).withHeight(34.0f).withMargin(4.0f);
+            return juce::FlexItem(component).withWidth(width).withHeight(32.0f).withMargin(4.0f);
         };
         row.items.add(item(play_, 72.0f));
         row.items.add(item(stop_, 72.0f));
@@ -111,8 +111,8 @@ public:
         row.items.add(item(bpm_, 150.0f));
         row.items.add(item(position_, 92.0f));
         row.items.add(item(quantize_, 110.0f));
-        row.items.add(juce::FlexItem(master_).withFlex(1.0f).withHeight(34.0f).withMargin(4.0f));
-        row.performLayout(getLocalBounds().reduced(8, 6).toFloat());
+        row.items.add(juce::FlexItem(master_).withWidth(160.0f).withHeight(32.0f).withMargin(4.0f));
+        row.performLayout(getLocalBounds().reduced(8, 4).toFloat());
     }
 
 private:
@@ -131,25 +131,35 @@ public:
         addAndMakeVisible(visuals_);
         addAndMakeVisible(padHost_);
         for (auto* slider : {&reverb_, &delay_, &pan_}) {
-            sendHost_.addAndMakeVisible(*slider);
-            slider->setSliderStyle(juce::Slider::LinearHorizontal);
+            addAndMakeVisible(*slider);
+            slider->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
             slider->setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+        }
+        reverbName_.setText("Reverb", juce::dontSendNotification);
+        delayName_.setText("Delay", juce::dontSendNotification);
+        panName_.setText("Pan", juce::dontSendNotification);
+        for (auto* label : {&reverbName_, &delayName_, &panName_}) {
+            addAndMakeVisible(*label);
+            label->setJustificationType(juce::Justification::centred);
+            label->setFont(juce::FontOptions(11.0f));
         }
         reverb_.setRange(0.0, 1.0, 0.001);
         delay_.setRange(0.0, 1.0, 0.001);
         pan_.setRange(-1.0, 1.0, 0.001);
         for (int i = 0; i < 6; ++i) {
-            macroHost_.addAndMakeVisible(macroName_[i]);
-            macroHost_.addAndMakeVisible(macro_[i]);
+            addAndMakeVisible(macroName_[i]);
+            addAndMakeVisible(macro_[i]);
             macroName_[i].setText(kMacroNames[i], juce::dontSendNotification);
+            macroName_[i].setJustificationType(juce::Justification::centred);
             macroName_[i].setFont(juce::FontOptions(12.0f));
-            macro_[i].setSliderStyle(juce::Slider::LinearHorizontal);
+            macro_[i].setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
             macro_[i].setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
             macro_[i].setRange(i == 5 ? 0.0 : 0.0, 1.0, 0.001);
         }
         for (int i = 0; i < 8; ++i) {
-            padHost_.addAndMakeVisible(pads_[i]);
+            addAndMakeVisible(pads_[i]);
             pads_[i].setButtonText(kPadNames[i]);
+            pads_[i].setTriggeredOnMouseDown(true);
         }
     }
 
@@ -187,34 +197,28 @@ public:
     }
 
     void resized() override {
-        juce::Grid grid;
-        grid.templateColumns = {juce::Grid::TrackInfo(juce::Grid::Px(240)), juce::Grid::TrackInfo(juce::Grid::Fr(1)),
-                                juce::Grid::TrackInfo(juce::Grid::Px(280))};
-        grid.templateRows = {juce::Grid::TrackInfo(juce::Grid::Fr(1)), juce::Grid::TrackInfo(juce::Grid::Px(72))};
-        grid.columnGap = juce::Grid::Px(8);
-        grid.rowGap = juce::Grid::Px(6);
-        grid.items = {juce::GridItem(sendHost_), juce::GridItem(macroHost_), juce::GridItem(visuals_), juce::GridItem(padHost_).withArea(2, 1, 3, 4)};
-        grid.performLayout(getLocalBounds().reduced(8, 24));
-        sendsArea_ = sendHost_.getBounds();
-
-        juce::FlexBox sendBox;
-        sendBox.flexDirection = juce::FlexBox::Direction::column;
-        sendBox.items.add(juce::FlexItem(reverb_).withFlex(1.0f).withMargin(2.0f));
-        sendBox.items.add(juce::FlexItem(delay_).withFlex(1.0f).withMargin(2.0f));
-        sendBox.items.add(juce::FlexItem(pan_).withFlex(1.0f).withMargin(2.0f));
-        sendBox.performLayout(sendHost_.getLocalBounds().toFloat());
-
-        auto macroArea = macroHost_.getLocalBounds();
-        const int rowH = juce::jmax(1, macroArea.getHeight() / 6);
-        for (int i = 0; i < 6; ++i) {
-            auto row = macroArea.removeFromTop(rowH);
-            macroName_[i].setBounds(row.removeFromLeft(58));
-            macro_[i].setBounds(row);
+        auto area = getLocalBounds().reduced(8, 6);
+        auto pads = area.removeFromBottom(52);
+        auto knobs = area.removeFromTop(96);
+        int x = knobs.getX();
+        auto place = [&](juce::Label& label, juce::Slider& slider) {
+            auto cell = juce::Rectangle<int>(x, knobs.getY(), 72, 96);
+            x += 78;
+            label.setBounds(cell.removeFromTop(16));
+            slider.setBounds(cell.withSizeKeepingCentre(64, 64));
+        };
+        place(reverbName_, reverb_);
+        place(delayName_, delay_);
+        place(panName_, pan_);
+        x += 16;
+        for (int i = 0; i < 6; ++i) place(macroName_[i], macro_[i]);
+        sendsArea_ = juce::Rectangle<int>(knobs.getX(), knobs.getY(), 78 * 3, 96);
+        visuals_.setBounds(area.getRight() - 220, area.getY(), 220, juce::jmin(120, area.getHeight()));
+        int padX = pads.getX();
+        for (auto& pad : pads_) {
+            pad.setBounds(padX, pads.getY() + 4, 68, 44);
+            padX += 72;
         }
-        juce::FlexBox pads;
-        pads.flexDirection = juce::FlexBox::Direction::row;
-        for (auto& pad : pads_) pads.items.add(juce::FlexItem(pad).withFlex(1.0f).withMargin(3.0f));
-        pads.performLayout(padHost_.getLocalBounds().toFloat());
     }
 
 private:
@@ -230,6 +234,7 @@ private:
 
     DawnMainComponent* owner_ = nullptr;
     juce::Component sendHost_, macroHost_, padHost_;
+    juce::Label reverbName_, delayName_, panName_;
     juce::Slider reverb_, delay_, pan_;
     juce::Label macroName_[6];
     juce::Slider macro_[6];
@@ -280,6 +285,7 @@ public:
             toggleRow_.addAndMakeVisible(solo_);
             toggleRow_.addAndMakeVisible(arm_);
             addAndMakeVisible(volume_);
+            addAndMakeVisible(spacer_);
             mute_.setButtonText("M");
             solo_.setButtonText("S");
             arm_.setButtonText("R");
@@ -321,6 +327,7 @@ public:
                     if (title.isEmpty()) title = "Clip " + juce::String(scene + 1);
                 }
                 slots_[scene].setClip(clip, title, kClipColours[scene % 4]);
+                slots_[scene].setTriggeredOnMouseDown(true);
                 slots_[scene].onClick = [this, scene] {
                     owner_->selectTrack(index_);
                     owner_->launchClip(owner_->clips_[index_][scene]);
@@ -350,16 +357,18 @@ public:
             juce::Grid grid;
             grid.templateColumns = {juce::Grid::TrackInfo(juce::Grid::Fr(1))};
             grid.templateRows = {juce::Grid::TrackInfo(juce::Grid::Px(26)), juce::Grid::TrackInfo(juce::Grid::Px(28)), juce::Grid::TrackInfo(juce::Grid::Px(24))};
-            for (int i = 0; i < kScenes; ++i) grid.templateRows.add(juce::Grid::TrackInfo(juce::Grid::Fr(1)));
+            for (int i = 0; i < kScenes; ++i) grid.templateRows.add(juce::Grid::TrackInfo(juce::Grid::Px(60)));
+            grid.templateRows.add(juce::Grid::TrackInfo(juce::Grid::Fr(1)));
             grid.rowGap = juce::Grid::Px(6);
             grid.items = {juce::GridItem(name_), juce::GridItem(toggleRow_), juce::GridItem(volume_)};
             for (auto& slot : slots_) grid.items.add(juce::GridItem(slot));
+            grid.items.add(juce::GridItem(spacer_));
             grid.performLayout(getLocalBounds().reduced(4, 6));
             juce::FlexBox toggles;
             toggles.flexDirection = juce::FlexBox::Direction::row;
-            toggles.items.add(juce::FlexItem(mute_).withFlex(1.0f).withMargin(2.0f));
-            toggles.items.add(juce::FlexItem(solo_).withFlex(1.0f).withMargin(2.0f));
-            toggles.items.add(juce::FlexItem(arm_).withFlex(1.0f).withMargin(2.0f));
+            toggles.items.add(juce::FlexItem(mute_).withWidth(28.0f).withHeight(24.0f).withMargin(2.0f));
+            toggles.items.add(juce::FlexItem(solo_).withWidth(28.0f).withHeight(24.0f).withMargin(2.0f));
+            toggles.items.add(juce::FlexItem(arm_).withWidth(28.0f).withHeight(24.0f).withMargin(2.0f));
             toggles.performLayout(toggleRow_.getLocalBounds().toFloat());
         }
 
@@ -374,6 +383,7 @@ public:
         juce::Component toggleRow_;
         juce::TextButton mute_, solo_, arm_;
         juce::Slider volume_;
+        juce::Component spacer_;
         Slot slots_[DawnMainComponent::kScenes];
     };
 
@@ -490,7 +500,7 @@ void DawnMainComponent::paint(juce::Graphics& graphics) { graphics.fillAll(kBg);
 void DawnMainComponent::resized() {
     juce::Grid grid;
     grid.templateColumns = {juce::Grid::TrackInfo(juce::Grid::Fr(1))};
-    grid.templateRows = {juce::Grid::TrackInfo(juce::Grid::Px(64)), juce::Grid::TrackInfo(juce::Grid::Fr(1)), juce::Grid::TrackInfo(juce::Grid::Px(236))};
+    grid.templateRows = {juce::Grid::TrackInfo(juce::Grid::Px(50)), juce::Grid::TrackInfo(juce::Grid::Fr(1)), juce::Grid::TrackInfo(juce::Grid::Px(250))};
     grid.items = {juce::GridItem(*transport_), juce::GridItem(*session_), juce::GridItem(*devices_)};
     grid.performLayout(getLocalBounds());
 }
